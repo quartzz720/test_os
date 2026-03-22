@@ -1,4 +1,4 @@
-# NiggaOS 🐧
+# TestOS 🐧
 
 A simple UEFI bootable OS shell written in pure C, no stdlib.
 
