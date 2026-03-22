@@ -1,4 +1,4 @@
-# NiggaOS Architecture
+# TestOS Architecture
 
 ## Overview
 
