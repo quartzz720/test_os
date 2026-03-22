@@ -1,0 +1,28 @@
+# Build artifacts
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+
+# EFI bootloader
+boot/efi/boot/BOOTX64.EFI
+boot/efi/boot/*.efi
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
+*.bak
+
+# IDE files
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
