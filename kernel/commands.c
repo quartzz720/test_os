@@ -29,7 +29,7 @@ void cmd_help(void) {
 
 void cmd_ver(void) {
     set_color(EFI_CYAN, EFI_BGBLACK);
-    println(L"NiggaOS 0.2 - fuck you, I'm reserved!");
+    println(L"TestOS 0.2 - fuck you, I'm reserved!");
     set_color(EFI_WHITE, EFI_BGBLACK);
 }
 

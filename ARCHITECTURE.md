@@ -2,7 +2,7 @@
 
 ## Overview
 
-NiggaOS is a minimal UEFI-based shell operating system. It demonstrates a bare-metal C implementation without standard library dependencies, communicating directly with UEFI firmware APIs.
+TestOS is a minimal UEFI-based shell operating system. It demonstrates a bare-metal C implementation without standard library dependencies, communicating directly with UEFI firmware APIs.
 
 ## Execution Flow
 
@@ -112,7 +112,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable) {
     #include "../kernel/shell.c"
     
     clear();
-    println(L"NiggaOS...");
+    println(L"TestOS...");
     shell();
     return EFI_SUCCESS;
 }
@@ -294,7 +294,7 @@ static CHAR16 buf[1024];  // Data section, not stack
 
 ---
 
-## Extending NiggaOS
+## Extending TestOS
 
 ### Adding a New Command
 
