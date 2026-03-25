@@ -5,6 +5,7 @@
 *.so
 *.dylib
 *.dll
+*.img
 
 # EFI bootloader
 boot/efi/boot/BOOTX64.EFI
