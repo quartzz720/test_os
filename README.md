@@ -2,6 +2,9 @@
 
 A simple UEFI bootable OS shell written in pure C, no stdlib.
 
+## Warning
+I just started doing it. Expect to encounter bugs.
+
 ## Features
 
 - **Pure C implementation** — no standard library, minimal dependencies
