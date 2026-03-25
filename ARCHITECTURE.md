@@ -1,5 +1,7 @@
 # TestOS Architecture
 
+# $${\color{red}WARNING! \space SUBJECT \space TO \space BE \space UPDATED! }$$
+
 ## Overview
 
 TestOS is a minimal UEFI-based shell operating system. It demonstrates a bare-metal C implementation without standard library dependencies, communicating directly with UEFI firmware APIs.
