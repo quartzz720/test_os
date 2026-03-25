@@ -1,9 +1,9 @@
-# TestOS 🐧
+# <samp>TestOS 🐧</samp>
 
 A simple UEFI bootable OS shell written in pure C, no stdlib.
 
-## Warning
-I just started doing it. Expect to encounter bugs.
+## <samp>Warning</samp>
+I just started doing it. Expect to encounter bugs, feature changes and so on.
 
 ## Features
 
