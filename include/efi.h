@@ -32,6 +32,7 @@ typedef UINT64             EFI_LBA;
 
 #define EFI_SUCCESS      0
 #define EFI_NOT_READY    ((EFI_STATUS)(1ULL << 63 | 6))
+#define EFI_NOT_FOUND    ((EFI_STATUS)(1ULL << 63 | 14))
 
 #define EFI_FILE_MODE_READ    0x0000000000000001ULL
 #define EFI_FILE_MODE_WRITE   0x0000000000000002ULL
@@ -46,10 +47,33 @@ typedef UINT64             EFI_LBA;
     { 0x964E5B22, 0x6459, 0x11D2, { 0x8E, 0x39, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B } }
 #define EFI_FILE_INFO_GUID \
     { 0x09576E92, 0x6D3F, 0x11D2, { 0x8E, 0x39, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B } }
+#define EFI_BLOCK_IO_PROTOCOL_GUID \
+    { 0x964E5B21, 0x6459, 0x11D2, { 0x8E, 0x39, 0x00, 0xA0, 0xC9, 0x69, 0x72, 0x3B } }
 
 typedef struct {
     UINT32 Data1; UINT16 Data2; UINT16 Data3; UINT8 Data4[8];
 } EFI_GUID;
+
+typedef struct {
+    UINT32 MediaId;
+    BOOLEAN RemovableMedia;
+    BOOLEAN MediaPresent;
+    BOOLEAN LogicalPartition;
+    BOOLEAN ReadOnly;
+    BOOLEAN WriteCaching;
+    UINT32 BlockSize;
+    UINT32 IoAlign;
+    UINT64 LastBlock;
+} EFI_BLOCK_IO_MEDIA;
+
+typedef struct EFI_BLOCK_IO_PROTOCOL {
+    UINT64 Revision;
+    EFI_BLOCK_IO_MEDIA* Media;
+    EFI_STATUS (*Reset)(struct EFI_BLOCK_IO_PROTOCOL*, BOOLEAN);
+    EFI_STATUS (*ReadBlocks)(struct EFI_BLOCK_IO_PROTOCOL*, UINT32, UINT64, UINTN, void*);
+    EFI_STATUS (*WriteBlocks)(struct EFI_BLOCK_IO_PROTOCOL*, UINT32, UINT64, UINTN, void*);
+    EFI_STATUS (*FlushBlocks)(struct EFI_BLOCK_IO_PROTOCOL*);
+} EFI_BLOCK_IO_PROTOCOL;
 
 typedef struct {
     UINT64 Signature; UINT32 Revision; UINT32 HeaderSize;
@@ -95,7 +119,7 @@ typedef struct EFI_FILE_PROTOCOL {
     void*      SetPosition;
     EFI_STATUS (*GetInfo)(struct EFI_FILE_PROTOCOL*, EFI_GUID*, UINTN*, void*);
     EFI_STATUS (*SetInfo)(struct EFI_FILE_PROTOCOL*, EFI_GUID*, UINTN, void*);
-    void*      Flush;
+    EFI_STATUS (*Flush)(struct EFI_FILE_PROTOCOL*);
 } EFI_FILE_PROTOCOL;
 
 typedef struct EFI_SIMPLE_FILE_SYSTEM_PROTOCOL {
@@ -139,8 +163,5 @@ typedef struct {
     void*                            RuntimeServices;
     EFI_BOOT_SERVICES*               BootServices;
 } EFI_SYSTEM_TABLE;
-
-extern EFI_SYSTEM_TABLE* ST;
-extern EFI_HANDLE        IH;
 
 #endif

@@ -25,11 +25,29 @@ pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x8
 
 ## Build & Run
 
+### Build
 ```bash
-make && qemu-system-x86_64 \
-  -drive if=pflash,format=raw,readonly=on,file="$(cygpath -m /ucrt64/share/qemu/edk2-x86_64-code.fd)" \
-  -drive if=pflash,format=raw,file="$(cygpath -m /ucrt64/share/qemu/edk2-i386-vars.fd)" \
-  -drive "file=fat:rw:$(cygpath -m $(pwd)/boot/efi),format=raw" \
+make
+```
+### Create a virtual disk
+```bash
+dd if=/dev/zero of=esp.img bs=1M count=32
+mkfs.vfat esp.img
+```
+### Put a compiled BOOTX64.EFI into a virtual disk
+```bash
+mkdir -p /tmp/esp_mount
+sudo mount -o loop esp.img /tmp/esp_mount
+sudo mkdir -p /tmp/esp_mount/EFI/BOOT
+sudo cp /location/to/BOOTX64.EFI /tmp/esp_mount/EFI/BOOT/
+sudo umount /tmp/esp_mount
+```
+### Run
+```bash
+qemu-system-x86_64 \
+  -drive if=pflash,format=raw,readonly=on,file="/ucrt64/share/qemu/edk2-x86_64-code.fd" \
+  -drive if=pflash,format=raw,file="/ucrt64/share/qemu/edk2-i386-vars.fd" \
+  -drive file=esp.img,format=raw \
   -net none
 ```
 

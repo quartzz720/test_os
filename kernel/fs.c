@@ -1,6 +1,10 @@
 #include "../include/efi.h"
 #include "console.h"
+#include "hal.h"
 #include "fs.h"
+
+// Current drive letter (Z: to X: for multi-drive support)
+CHAR16 current_drive = L'Z';
 
 CHAR16 cwd[256] = L"\\";
 
@@ -18,6 +22,9 @@ void build_path(CHAR16* path, CHAR16* name, CHAR16* result) {
 }
 
 EFI_FILE_PROTOCOL* open_root(void) {
+    EFI_SYSTEM_TABLE* ST = hal_get_system_table();
+    EFI_HANDLE IH = hal_get_image_handle();
+    
     EFI_GUID lip_guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
     EFI_GUID sfs_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
     EFI_LOADED_IMAGE_PROTOCOL* lip = NULL;
@@ -36,7 +43,12 @@ void cmd_dir(void) {
     EFI_STATUS s = root->Open(root, &dir, cwd, EFI_FILE_MODE_READ, 0);
     if (s != EFI_SUCCESS) { println(L"Error: cannot open directory"); return; }
     set_color(EFI_YELLOW, EFI_BGBLACK);
-    print(L"Directory of "); println(cwd);
+    print(L"Directory of ");
+    CHAR16 full_path[256];
+    full_path[0] = current_drive;
+    full_path[1] = L':';
+    strcpy16(&full_path[2], cwd);
+    println(full_path);
     set_color(EFI_WHITE, EFI_BGBLACK);
     UINT8 buf[512];
     while (1) {
@@ -44,6 +56,7 @@ void cmd_dir(void) {
         s = dir->Read(dir, &size, buf);
         if (s != EFI_SUCCESS || size == 0) break;
         EFI_FILE_INFO* info = (EFI_FILE_INFO*)buf;
+        if (streq(info->FileName, L"EFI") || streq(info->FileName, L".") || streq(info->FileName, L"..")) continue;
         if (info->Attribute & EFI_FILE_DIRECTORY) {
             set_color(EFI_CYAN, EFI_BGBLACK); print(L"  [DIR]  ");
         } else {
@@ -70,9 +83,14 @@ void cmd_cd(CHAR16* input) {
     if (streq(path, L"\\") || streq(path, L"/")) {
         cwd[0] = L'\\'; cwd[1] = 0; return;
     }
+    
+    // Build full path
+    CHAR16 fullpath[256];
+    build_path(cwd, path, fullpath);
+    
     EFI_FILE_PROTOCOL* root = open_root();
     EFI_FILE_PROTOCOL* dir  = NULL;
-    EFI_STATUS s = root->Open(root, &dir, path, EFI_FILE_MODE_READ, 0);
+    EFI_STATUS s = root->Open(root, &dir, fullpath, EFI_FILE_MODE_READ, 0);
     if (s != EFI_SUCCESS) {
         set_color(EFI_RED, EFI_BGBLACK);
         println(L"Error: directory not found");
@@ -80,15 +98,10 @@ void cmd_cd(CHAR16* input) {
         root->Close(root); return;
     }
     dir->Close(dir); root->Close(root);
-    if (path[0] == L'\\') {
-        UINTN j = 0;
-        while (path[j]) { cwd[j] = path[j]; j++; } cwd[j] = 0;
-    } else {
-        UINTN base = strlen16(cwd);
-        if (cwd[base-1] != L'\\') cwd[base++] = L'\\';
-        UINTN j = 0;
-        while (path[j]) { cwd[base+j] = path[j]; j++; } cwd[base+j] = 0;
-    }
+    
+    // Update cwd
+    UINTN j = 0;
+    while (fullpath[j]) { cwd[j] = fullpath[j]; j++; } cwd[j] = 0;
 }
 
 void cmd_type(CHAR16* input) {
@@ -103,19 +116,33 @@ void cmd_type(CHAR16* input) {
         set_color(EFI_RED, EFI_BGBLACK); println(L"Error: file not found");
         set_color(EFI_WHITE, EFI_BGBLACK); return;
     }
+    
     UINT8 buf[512];
-    CHAR16 out[2] = {0, 0};
+    CHAR16 line_buf[512];
+    UINTN line_pos = 0;
+    
     while (1) {
         UINTN size = sizeof(buf);
-        file->Read(file, &size, buf);
-        if (size == 0) break;
+        s = file->Read(file, &size, buf);
+        if (s != EFI_SUCCESS || size == 0) break;
+        
         for (UINTN i = 0; i < size; i++) {
-            if (buf[i] == '\n') { print(L"\r\n"); continue; }
-            if (buf[i] == '\r') continue;
-            out[0] = (CHAR16)buf[i]; print(out);
+            if (buf[i] == '\n') {
+                line_buf[line_pos] = 0;
+                println(line_buf);
+                line_pos = 0;
+            } else if (buf[i] != '\r' && line_pos < 510) {
+                line_buf[line_pos++] = (CHAR16)buf[i];
+            }
         }
     }
-    println(L""); file->Close(file); root->Close(root);
+    
+    if (line_pos > 0) {
+        line_buf[line_pos] = 0;
+        println(line_buf);
+    }
+    
+    file->Close(file); root->Close(root);
 }
 
 void cmd_mkdir(CHAR16* input) {
@@ -147,14 +174,22 @@ void cmd_del(CHAR16* input) {
     build_path(cwd, name, fullpath);
     EFI_FILE_PROTOCOL* root = open_root();
     EFI_FILE_PROTOCOL* file = NULL;
+    
+    // Open in write mode to allow deletion
     EFI_STATUS s = root->Open(root, &file, fullpath, EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE, 0);
     if (s != EFI_SUCCESS) {
         set_color(EFI_RED, EFI_BGBLACK); println(L"Error: file not found");
         set_color(EFI_WHITE, EFI_BGBLACK); root->Close(root); return;
     }
+    
+    // Delete the file
     s = file->Delete(file);
-    if (s == EFI_SUCCESS) { println(L"File deleted."); }
-    else {
+    // Note: After Delete(), the file handle is closed by firmware
+    
+    if (s == EFI_SUCCESS) { 
+        set_color(EFI_GREEN, EFI_BGBLACK); println(L"File deleted.");
+        set_color(EFI_WHITE, EFI_BGBLACK);
+    } else {
         set_color(EFI_RED, EFI_BGBLACK); println(L"Error: could not delete file");
         set_color(EFI_WHITE, EFI_BGBLACK);
     }
@@ -208,13 +243,41 @@ void cmd_rmdir(CHAR16* input) {
         if (*name == L' ') name++;
     }
     if (strlen16(name) == 0) { println(L"Usage: rmdir [dir] or rmdir /s [dir]"); return; }
+    
+    // Build full path - handle both relative (test) and absolute (Z:\test) paths
+    CHAR16 fullpath[256];
+    if (name[0] == L'Z' && name[1] == L':') {
+        // Full path like Z:\test
+        strcpy16(fullpath, name);
+    } else if (name[0] == L'\\') {
+        // Absolute path like \test
+        strcpy16(fullpath, name);
+    } else {
+        // Relative path like test
+        build_path(cwd, name, fullpath);
+    }
+    
     EFI_FILE_PROTOCOL* root = open_root();
     EFI_FILE_PROTOCOL* dir = NULL;
-    EFI_STATUS s = root->Open(root, &dir, name, EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE, 0);
+    EFI_STATUS s = root->Open(root, &dir, fullpath, EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE, 0);
     if (s != EFI_SUCCESS) {
         set_color(EFI_RED, EFI_BGBLACK); println(L"Error: directory not found");
         set_color(EFI_WHITE, EFI_BGBLACK); root->Close(root); return;
     }
+    
+    // Check if directory is empty (if not recursive)
+    if (!recursive) {
+        UINT8 buf[512];
+        UINTN size = sizeof(buf);
+        s = dir->Read(dir, &size, buf);
+        if (size > 0) {
+            set_color(EFI_RED, EFI_BGBLACK); println(L"Error: directory is not empty");
+            set_color(EFI_WHITE, EFI_BGBLACK);
+            dir->Close(dir); root->Close(root); return;
+        }
+    }
+    
+    // Recursive delete - delete all contents
     if (recursive) {
         UINT8 buf[512];
         while (1) {
@@ -223,16 +286,36 @@ void cmd_rmdir(CHAR16* input) {
             if (s != EFI_SUCCESS || size == 0) break;
             EFI_FILE_INFO* info = (EFI_FILE_INFO*)buf;
             if (streq(info->FileName, L".") || streq(info->FileName, L"..")) continue;
+            
             EFI_FILE_PROTOCOL* child = NULL;
             s = dir->Open(dir, &child, info->FileName, EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE, 0);
             if (s == EFI_SUCCESS) {
+                // Recursively delete subdirectories
+                if (info->Attribute & EFI_FILE_DIRECTORY) {
+                    UINT8 child_buf[512];
+                    while (1) {
+                        UINTN child_size = sizeof(child_buf);
+                        s = child->Read(child, &child_size, child_buf);
+                        if (s != EFI_SUCCESS || child_size == 0) break;
+                        EFI_FILE_INFO* child_info = (EFI_FILE_INFO*)child_buf;
+                        if (streq(child_info->FileName, L".") || streq(child_info->FileName, L"..")) continue;
+                        EFI_FILE_PROTOCOL* grandchild = NULL;
+                        if (child->Open(child, &grandchild, child_info->FileName, 
+                            EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE, 0) == EFI_SUCCESS) {
+                            grandchild->Delete(grandchild);
+                        }
+                    }
+                }
                 child->Delete(child);
             }
         }
     }
+    
     s = dir->Delete(dir);
-    if (s == EFI_SUCCESS) { println(L"Directory deleted."); }
-    else {
+    if (s == EFI_SUCCESS) { 
+        set_color(EFI_GREEN, EFI_BGBLACK); println(L"Directory deleted.");
+        set_color(EFI_WHITE, EFI_BGBLACK);
+    } else {
         set_color(EFI_RED, EFI_BGBLACK); println(L"Error: could not delete directory");
         set_color(EFI_WHITE, EFI_BGBLACK);
     }
@@ -271,6 +354,12 @@ void cmd_copy(CHAR16* input) {
         if (s != EFI_SUCCESS || size == 0) break;
         dst->Write(dst, &size, buf);
     }
+    
+    // Flush destination file to ensure data is written
+    if (dst->Flush) {
+        dst->Flush(dst);
+    }
+    
     src->Close(src); dst->Close(dst); root->Close(root);
     println(L"File copied.");
 }
@@ -317,7 +406,7 @@ void cmd_more(CHAR16* input) {
                 if (lines >= 20) {
                     println(L"Press any key to continue...");
                     EFI_INPUT_KEY key;
-                    while (ST->ConIn->ReadKeyStroke(ST->ConIn, &key) != EFI_SUCCESS);
+                    hal_console_read_key(&key);
                     lines = 0;
                 }
                 continue;
@@ -431,6 +520,12 @@ void cmd_edit(CHAR16* input) {
                     if (outsize < sizeof(out)) out[outsize++] = '\n';
                 }
                 file->Write(file, &outsize, out);
+                
+                // Flush to ensure data is written
+                if (file->Flush) {
+                    file->Flush(file);
+                }
+                
                 file->Close(file);
                 println(L"File saved.");
             } else {
@@ -484,14 +579,36 @@ void cmd_write(CHAR16* input) {
         EFI_FILE_MODE_READ | EFI_FILE_MODE_WRITE | EFI_FILE_MODE_CREATE, 0);
     if (s != EFI_SUCCESS) {
         set_color(EFI_RED, EFI_BGBLACK); println(L"Error: cannot create file");
-        set_color(EFI_WHITE, EFI_BGBLACK); return;
+        set_color(EFI_WHITE, EFI_BGBLACK); root->Close(root); return;
     }
-    UINTN len = strlen16(p);
-    UINT8 abuf[256];
-    for (UINTN j = 0; j < len && j < 255; j++) abuf[j] = (UINT8)p[j];
-    abuf[len] = '\n';
-    UINTN wlen = len + 1;
-    file->Write(file, &wlen, abuf);
+    
+    // Convert CHAR16 to ASCII bytes and write
+    UINT8 abuf[512];
+    UINTN i_len = 0;
+    while (p[i_len] && i_len < 510) {
+        abuf[i_len] = (UINT8)(p[i_len] & 0xFF);
+        i_len++;
+    }
+    abuf[i_len] = '\n';
+    i_len++;
+    
+    // Write data
+    s = file->Write(file, &i_len, abuf);
+    if (s != EFI_SUCCESS) {
+        set_color(EFI_RED, EFI_BGBLACK); println(L"Error: write failed");
+        set_color(EFI_WHITE, EFI_BGBLACK); 
+        file->Close(file); root->Close(root); return;
+    }
+    
+    // Flush to ensure data is written to disk
+    if (file->Flush) {
+        s = file->Flush(file);
+        if (s != EFI_SUCCESS) {
+            set_color(EFI_RED, EFI_BGBLACK); println(L"Warning: flush failed");
+            set_color(EFI_WHITE, EFI_BGBLACK);
+        }
+    }
+    
     file->Close(file); root->Close(root);
     set_color(EFI_GREEN, EFI_BGBLACK); println(L"File written.");
     set_color(EFI_WHITE, EFI_BGBLACK);
