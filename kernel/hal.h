@@ -25,6 +25,9 @@ void hal_console_clear(void);
 void hal_console_set_color(UINTN fg, UINTN bg);
 void hal_console_read_key(EFI_INPUT_KEY* key);
 
+// Shutdown the system (UEFI ResetSystem) (forgot about this one)
+void hal_quit(void);
+
 // ============================================================================
 // Memory Functions
 // ============================================================================

@@ -32,6 +32,8 @@ static Command commands[] = {
     { L"more",   cmd_more },
     { L"tree",   cmd_tree },
     { L"edit",   cmd_edit },
+    { L"color",   cmd_color },
+    { L"quit",   cmd_quit },
     { NULL, NULL }
 };
 
@@ -84,6 +86,9 @@ void shell(void) {
                 cmd_ver();
             } else if (streq(input, L"dir") || streq(input, L"ls")) {
                 cmd_dir();
+            } else if (streq(input, L"quit") || streq(input, L"exit")) {
+                cmd_quit(input);
+            
             } else {
                 // Commands with arguments
                 cmd->handler(input);

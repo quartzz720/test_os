@@ -77,6 +77,7 @@ qemu-system-x86_64 \
 | `copy` | `[src] [dst]` | Copy file |
 | `move` | `[src] [dst]` | Move file (copy + delete) |
 | `tree` | — | Display directory tree |
+| `quit` | — | VERY IMPORTANT THING I FORGOT ABOUT (shutdown) |
 
 ## Editor (`edit` command)
 

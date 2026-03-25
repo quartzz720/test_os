@@ -150,6 +150,16 @@ typedef struct {
     void* UnloadImage; void* ExitBootServices;
 } EFI_BOOT_SERVICES;
 
+// Warning: runtime services are vibe-coded, subject to change (probably)
+
+typedef void (*EFI_RESET_SYSTEM)(UINTN ResetType, EFI_STATUS ResetStatus, UINTN DataSize, void *ResetData);
+
+typedef struct {
+    char Hdr[24];
+    void* _pad[10];
+    EFI_RESET_SYSTEM ResetSystem;
+} EFI_RUNTIME_SERVICES;
+
 typedef struct {
     EFI_TABLE_HEADER                 Hdr;
     CHAR16*                          FirmwareVendor;
@@ -160,8 +170,11 @@ typedef struct {
     EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL* ConOut;
     EFI_HANDLE                       StandardErrorHandle;
     void*                            StdErr;
-    void*                            RuntimeServices;
+    // void*                            RuntimeServices;
+    EFI_RUNTIME_SERVICES*            RuntimeServices;
     EFI_BOOT_SERVICES*               BootServices;
+    UINTN                            NumberOfTableEntries;
+    void*                            ConfigurationTable;
 } EFI_SYSTEM_TABLE;
 
 #endif

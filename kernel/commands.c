@@ -25,6 +25,8 @@ void cmd_help(void) {
     println(L"  more [file]     - view file (paged)");
     println(L"  tree            - display directory tree");
     println(L"  edit [file]     - edit file (Up/Down=nav, Ctrl+S=save, Ctrl+Q=quit, Del=erase)");
+    println(L"");
+    println(L"  quit            - shutdown system (VERY IMPORTANT AND I FORGOT ABOUT THIS ONE)");
 }
 
 void cmd_ver(void) {
@@ -52,4 +54,9 @@ void cmd_color(CHAR16* input) {
     }
     set_color(fg, bg);
     print(L"Color set to fg="); print_uint(fg); print(L" bg="); print_uint(bg); println(L"");
+}
+
+// Heh, I forgot about this one
+void cmd_quit(CHAR16*) {
+    hal_quit();
 }

@@ -65,6 +65,13 @@ void hal_console_read_key(EFI_INPUT_KEY* key) {
     while (hal_st->ConIn->ReadKeyStroke(hal_st->ConIn, key) != EFI_SUCCESS);
 }
 
+// that fucking shutdown function I forgot about, whoops
+void hal_quit(void) {
+    if (hal_st != NULL && hal_st->RuntimeServices != NULL) {
+        hal_st->RuntimeServices->ResetSystem(2, EFI_SUCCESS, 0, NULL);
+    }
+}
+
 // ============================================================================
 // Memory Functions
 // ============================================================================
