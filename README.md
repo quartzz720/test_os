@@ -168,14 +168,14 @@ CFLAGS  = -ffreestanding -fno-stack-protector -fshort-wchar -mno-red-zone \
           -fno-builtin -fno-stack-check -Wall -Wextra -std=c11 -I include -I kernel
 ```
 
-### QEMU: "Could not open disk image"
+<!-- ### QEMU: "Could not open disk image"
 
 Make sure the FAT image path is correct:
 ```bash
 -drive "file=fat:rw:$(cygpath -m $(pwd)/boot/efi),format=raw"
 ```
 
-On MSYS2, `$(pwd)` returns POSIX path; `cygpath -m` converts it to Windows path.
+On MSYS2, `$(pwd)` returns POSIX path; `cygpath -m` converts it to Windows path. -->
 
 ---
 
