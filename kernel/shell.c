@@ -34,6 +34,7 @@ static Command commands[] = {
     { L"edit",   cmd_edit },
     { L"color",   cmd_color },
     { L"quit",   cmd_quit },
+    { L"exit",   cmd_quit },
     { NULL, NULL }
 };
 
