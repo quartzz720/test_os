@@ -45,7 +45,7 @@ sudo mkdir -p /tmp/esp_mount/EFI/BOOT
 sudo cp /location/to/BOOTX64.EFI /tmp/esp_mount/EFI/BOOT/
 sudo umount /tmp/esp_mount
 ```
-### Run [MSYS2 / WSL]
+### Run [MSYS2]
 ```bash
 qemu-system-x86_64 \
   -drive if=pflash,format=raw,readonly=on,file="/ucrt64/share/qemu/edk2-x86_64-code.fd" \
